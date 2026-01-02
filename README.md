@@ -98,7 +98,7 @@ A package object contains the following properties:
 
 ## Supported Environments
 
-This library is designed to work in both Node.js / other environments that support native `fetch` **and** in Google Apps Script (GAS), which uses `UrlFetchApp.fetch`.
+This library is designed to work in both Node.js / other environments that support native `fetch` **and** in Google Apps Script (GAS), which uses `UrlFetchApp.fetch`. It includes a pure-JavaScript RSA implementation (`node-forge`) to handle the required password encryption across all platforms.
 
 In GAS, the library can be especially useful to fetch tracking numbers directly from Gmail emails and add them to 17track via the API.
 
@@ -112,7 +112,7 @@ To build for GAS, run:
 npm run build-gas
 ```
 
-This command uses Rollup (with ts2gas) to convert the TypeScript files to GAS-compatible JavaScript. The output file (`index.gs`) is placed in the `dist-gas` folder.
+This command uses esbuild (with ts2gas) to convert the TypeScript files to GAS-compatible JavaScript. The output file (`index.gs`) is placed in the `dist-gas` folder.
 
 For more information about targeting GAS, see [here](https://github.com/google/clasp/blob/master/docs/typescript.md).
 

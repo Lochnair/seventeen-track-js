@@ -1,7 +1,18 @@
-import { Package, packageStatusMap, PackageStatus } from "./package";
+import forge from "node-forge";
+import { Package, packageStatusMap, PackageStatus } from "./package.js";
 
 const API_URL_BUYER: string = "https://buyer.17track.net/orderapi/call";
-const API_URL_USER: string = "https://user.17track.net/userapi/call";
+const API_URL_USER: string =
+  "https://user.17track.net/user-api/v1/sign-in-by-password";
+
+const PUBLIC_KEY: string = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Y5iQN3VNofXPtZXYZe9
+75ojD+Gb+yPBrlrKj2t4XvYHE+pYmFzGPTvDmB3t1OfHujdgBVc3VJBSFsHezm4kz
+4iqIChHLKeFvuux+i/Uq+zo1QdC72qteUMHF925qPLe3xU/QJj6BFR9mA4VrUwXt8
+eWI58ozizBH31PclxiPNT+yYYXRUV3QJvbZ+FJGL3gYUu1k44WILQzDZfBJMRf+My
+LHZew6+XtYB8E2+PXc/R7TtLPcMDsPvARrAJMhu5b+yfwJM1zOFChAz3U1w0Zkj1y
+VJQaa/aktmfd0KyFkU2M0xNpPIIcQkywUGCMZEmJkEIyyV/I+H/NvQ+qqU5llwIDAQAB
+-----END PUBLIC KEY-----`;
 
 export class RequestError extends Error {}
 export class InvalidTrackingNumberError extends Error {}
@@ -16,19 +27,25 @@ export class Profile {
     this.request = request;
   }
 
+  private rsaEncrypt(text: string): string {
+    const publicKey = forge.pki.publicKeyFromPem(PUBLIC_KEY);
+    const encrypted = publicKey.encrypt(text, "RSAES-PKCS1-V1_5");
+    return forge.util.encode64(encrypted);
+  }
+
   async login(email: string, password: string): Promise<boolean> {
+    const encryptedPassword = this.rsaEncrypt(password);
     const loginResp = await this.request("post", API_URL_USER, {
-      version: "1.0",
-      method: "Signin",
-      param: { Email: email, Password: password, CaptchaCode: "" },
-      sourcetype: 0,
+      source: 0,
+      account: email,
+      password: encryptedPassword,
     });
 
-    if (loginResp.Code !== 0) {
+    if (loginResp.code !== 0) {
       return false;
     }
 
-    this.accountId = loginResp.Json.gid;
+    this.accountId = loginResp.data?.gid;
     return true;
   }
 

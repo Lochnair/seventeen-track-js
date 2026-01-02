@@ -1,4 +1,4 @@
-import { Profile } from "./profile";
+import { Profile } from "./profile.js";
 
 export class Client {
   public profile: Profile;
@@ -84,6 +84,10 @@ export class Client {
   private async request(method: string, url: string, data?: any): Promise<any> {
     const headers: { [key: string]: string } = {
       "Content-Type": "application/json",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Referer: "https://www.17track.net/",
+      "X-Requested-With": "XMLHttpRequest",
     };
 
     const relevantCookies = Object.entries(this.cookies)
@@ -94,7 +98,24 @@ export class Client {
       headers["Cookie"] = relevantCookies;
     }
 
-    let bodyData = data ? JSON.stringify(data) : undefined;
+    const bodyData = data ? JSON.stringify(data) : undefined;
+
+    if (
+      typeof process !== "undefined" &&
+      process.env &&
+      process.env.NODE_DEBUG &&
+      process.env.NODE_DEBUG.includes("seventeen-track")
+    ) {
+      console.log(`Request: ${method.toUpperCase()} ${url}`);
+      console.log("Request Headers:", JSON.stringify(headers, null, 2));
+      if (bodyData) {
+        const loggedData = JSON.parse(bodyData);
+        if (loggedData.password) {
+          loggedData.password = "****";
+        }
+        console.log("Request Data:", JSON.stringify(loggedData, null, 2));
+      }
+    }
 
     const response = await this.customFetch(url, {
       method: method.toUpperCase(),
@@ -114,8 +135,10 @@ export class Client {
       } catch (e) {
         throw new Error(`Request failed: ${response.status} - ${errorText}`);
       }
+      const errorCode = errorJson.Code ?? errorJson.code;
+      const errorMessage = errorJson.Message ?? errorJson.message;
       throw new Error(
-        `Request failed: ${response.status} - Code: ${errorJson.Code}, Message: ${errorJson.Message}`
+        `Request failed: ${response.status} - Code: ${errorCode}, Message: ${errorMessage}`
       );
     }
 
