@@ -1,6 +1,6 @@
 {
   "name": "seventeen-track",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "An unofficial SDK for interacting with 17track.net to manage and track packages.",
   "main": "dist/index.js",
