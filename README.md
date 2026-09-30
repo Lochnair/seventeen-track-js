@@ -32,6 +32,18 @@ console.log("Summary:", summary);
 // Retrieve packages.
 const packages = await client.profile.packages();
 console.log("Packages:", packages);
+
+// Add a package using the J&T Cargo carrier code.
+await client.profile.addPackage("your-tracking-number", "My package", {
+  firstCarrier: 100778,
+  secondCarrier: 0,
+});
+
+// Change the carrier for an existing package.
+await client.profile.setCarrierByTrackingNumber(
+  "your-tracking-number",
+  100778
+);
 ```
 
 ### API
@@ -55,10 +67,17 @@ summary(showArchived?: boolean): Promise<Record<string, number>>
 Fetches aggregate summary information about packages, optionally including archived ones.
 
 ```ts
-addPackage(trackingNumber: string, friendlyName?: string): Promise<void>
+addPackage(trackingNumber: string, friendlyName?: string, options?: AddPackageOptions): Promise<void>
 ```
 
-Adds a package by its tracking number and sets a friendly name if provided.
+Adds a package by its tracking number, with an optional friendly name and carrier selection.
+
+```ts
+setCarrier(internalId: string, firstCarrier: number, secondCarrier?: number): Promise<void>
+setCarrierByTrackingNumber(trackingNumber: string, firstCarrier: number, secondCarrier?: number): Promise<void>
+```
+
+Sets carriers by internal package ID or tracking number. When `secondCarrier` is omitted, its current value is preserved.
 
 ```ts
 setFriendlyName(internalId: string, friendlyName: string): Promise<void>
@@ -86,6 +105,7 @@ A package object contains the following properties:
 | ------------------ | ------ | ------------------------------------------------ |
 | id                 | string | Unique identifier for the package.               |
 | destinationCountry | number | Code for the destination country.                |
+| firstCarrier       | number | Primary 17TRACK carrier code.                    |
 | friendlyName       | string | User-friendly name for the package.              |
 | infoText           | string | Additional information about the package status. |
 | location           | string | Current location of the package.                 |
@@ -93,6 +113,7 @@ A package object contains the following properties:
 | tz                 | string | Timezone of the timestamp.                       |
 | originCountry      | number | Code for the origin country.                     |
 | packageType        | number | Identifier for the type of package.              |
+| secondCarrier      | number | Secondary 17TRACK carrier code.                  |
 | status             | number | Numeric status code of the package.              |
 | trackingNumber     | string | Tracking number for the package.                 |
 

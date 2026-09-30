@@ -24,6 +24,7 @@ export const packageStatusMap: Record<number, PackageStatus> = {
 export class Package {
   id?: string;
   destinationCountry: number | string;
+  firstCarrier: number;
   friendlyName?: string;
   infoText?: string;
   location?: string;
@@ -31,6 +32,7 @@ export class Package {
   tz: string;
   originCountry: number | string;
   packageType: number | string;
+  secondCarrier: number;
   status: number | string;
   trackingNumber: string;
 
@@ -39,6 +41,7 @@ export class Package {
     options: {
       id?: string;
       destinationCountry: number | string;
+      firstCarrier?: number;
       friendlyName?: string;
       infoText?: string;
       location?: string;
@@ -46,12 +49,14 @@ export class Package {
       tz?: string;
       originCountry: number | string;
       packageType: number | string;
+      secondCarrier?: number;
       status: number | string;
     }
   ) {
     this.trackingNumber = trackingNumber;
     this.id = options.id;
     this.destinationCountry = options.destinationCountry;
+    this.firstCarrier = options.firstCarrier ?? 0;
     this.friendlyName = options.friendlyName;
     this.infoText = options.infoText;
     this.location = options.location;
@@ -59,6 +64,7 @@ export class Package {
     this.tz = options.tz || "UTC";
     this.originCountry = options.originCountry;
     this.packageType = options.packageType;
+    this.secondCarrier = options.secondCarrier ?? 0;
     this.status = options.status;
   }
 }

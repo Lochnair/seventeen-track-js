@@ -1,5 +1,15 @@
 import { Profile } from "./profile.js";
 
+export {
+  InvalidPackageDataError,
+  InvalidTrackingNumberError,
+  PackageNotFoundError,
+  Profile,
+  RequestError,
+} from "./profile.js";
+export type { AddPackageOptions } from "./profile.js";
+export { Package, PackageStatus } from "./package.js";
+
 export class Client {
   public profile: Profile;
   private cookies: { [key: string]: string } = {};
