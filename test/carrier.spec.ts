@@ -95,6 +95,33 @@ describe("carrier support", () => {
     });
   });
 
+  it("finds packages beyond the first results page", async () => {
+    const firstPage = {
+      Code: 0,
+      pageInfo: { TotalCount: 1 },
+      Json: Array.from({ length: 40 }, (_, index) => ({
+        FTrackNo: `FIRST-PAGE-${index}`,
+        FTrackInfoId: `first-page-${index}`,
+        FLastEvent: "",
+      })),
+    };
+    const { profile, calls } = fakeProfile([
+      firstPage,
+      packageResponse("TRACK-ON-PAGE-2", "page-2-id", 1, 222),
+      { Code: 0 },
+    ]);
+
+    await profile.setCarrierByTrackingNumber("TRACK-ON-PAGE-2", 100778);
+
+    assert.equal(calls[0].data.param.Page, 1);
+    assert.equal(calls[1].data.param.Page, 2);
+    assert.deepEqual(calls[2].data.param, {
+      TrackInfoId: "page-2-id",
+      FirstCarrier: 100778,
+      SecondCarrier: 222,
+    });
+  });
+
   it("rejects a second carrier without a first carrier", async () => {
     const { profile, calls } = fakeProfile([]);
 

@@ -4,6 +4,8 @@ import { Package, packageStatusMap, PackageStatus } from "./package.js";
 const API_URL_BUYER: string = "https://buyer.17track.net/orderapi/call";
 const API_URL_USER: string =
   "https://user.17track.net/user-api/v1/sign-in-by-password";
+const PACKAGES_PER_PAGE = 40;
+const MAX_PACKAGE_PAGES = 100;
 
 const PUBLIC_KEY: string = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Y5iQN3VNofXPtZXYZe9
@@ -61,50 +63,76 @@ export class Profile {
     showArchived: boolean = false,
     tz: string = "UTC"
   ): Promise<Package[]> {
-    const packagesResp = await this.request("post", API_URL_BUYER, {
-      version: "1.0",
-      method: "GetTrackInfoList",
-      param: {
-        IsArchived: showArchived,
-        Item: "",
-        Page: 1,
-        PerPage: 40,
-        PackageState: packageState,
-        Sequence: "0",
-      },
-      sourcetype: 0,
-    });
-
-    if (packagesResp.Code !== 0) {
-      throw new RequestError(
-        `Non-zero status code in response: ${packagesResp.Code}`
-      );
-    }
-
     const packages: Package[] = [];
-    for (const packageData of packagesResp.Json || []) {
-      let event: { [key: string]: any } = {};
-      const lastEventRaw: string = packageData.FLastEvent;
-      if (lastEventRaw) {
-        event = JSON.parse(lastEventRaw);
+    const seenPageSignatures = new Set<string>();
+    let totalCount: number | undefined;
+
+    for (let page = 1; page <= MAX_PACKAGE_PAGES; page++) {
+      const packagesResp = await this.request("post", API_URL_BUYER, {
+        version: "1.0",
+        method: "GetTrackInfoList",
+        param: {
+          IsArchived: showArchived,
+          Item: "",
+          Page: page,
+          PerPage: PACKAGES_PER_PAGE,
+          PackageState: packageState,
+          Sequence: "0",
+        },
+        sourcetype: 0,
+      });
+
+      if (packagesResp.Code !== 0) {
+        throw new RequestError(
+          `Non-zero status code in response: ${packagesResp.Code}`
+        );
       }
 
-      const options = {
-        id: packageData.FTrackInfoId,
-        destinationCountry: packageData.FSecondCountry ?? 0,
-        firstCarrier: packageData.FFirstCarrier ?? 0,
-        friendlyName: packageData.FRemark,
-        infoText: event.z,
-        location: `${event.c ?? ""} ${event.d ?? ""}`.trim(),
-        timestamp: event.a,
-        tz: tz,
-        originCountry: packageData.FFirstCountry ?? 0,
-        packageType: packageData.FTrackStateType ?? 0,
-        secondCarrier: packageData.FSecondCarrier ?? 0,
-        status: packageData.FPackageState ?? 0,
-      };
-      packages.push(new Package(packageData.FTrackNo, options));
+      const rows = packagesResp.Json || [];
+      if (rows.length === 0) break;
+
+      const pageSignature = JSON.stringify(
+        rows.map((packageData: any) => [
+          packageData.FTrackInfoId ?? null,
+          packageData.FTrackNo,
+        ])
+      );
+      if (seenPageSignatures.has(pageSignature)) break;
+      seenPageSignatures.add(pageSignature);
+
+      for (const packageData of rows) {
+        let event: { [key: string]: any } = {};
+        const lastEventRaw: string = packageData.FLastEvent;
+        if (lastEventRaw) {
+          event = JSON.parse(lastEventRaw);
+        }
+
+        const options = {
+          id: packageData.FTrackInfoId,
+          destinationCountry: packageData.FSecondCountry ?? 0,
+          firstCarrier: packageData.FFirstCarrier ?? 0,
+          friendlyName: packageData.FRemark,
+          infoText: event.z,
+          location: `${event.c ?? ""} ${event.d ?? ""}`.trim(),
+          timestamp: event.a,
+          tz: tz,
+          originCountry: packageData.FFirstCountry ?? 0,
+          packageType: packageData.FTrackStateType ?? 0,
+          secondCarrier: packageData.FSecondCarrier ?? 0,
+          status: packageData.FPackageState ?? 0,
+        };
+        packages.push(new Package(packageData.FTrackNo, options));
+      }
+
+      totalCount ??= packagesResp.pageInfo?.TotalCount || undefined;
+      if (
+        rows.length < PACKAGES_PER_PAGE &&
+        (totalCount === undefined || packages.length >= totalCount)
+      ) {
+        break;
+      }
     }
+
     return packages;
   }
 
