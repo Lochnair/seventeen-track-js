@@ -5,7 +5,6 @@ const API_URL_BUYER: string = "https://buyer.17track.net/orderapi/call";
 const API_URL_USER: string =
   "https://user.17track.net/user-api/v1/sign-in-by-password";
 const PACKAGES_PER_PAGE = 40;
-const MAX_PACKAGE_PAGES = 100;
 
 const PUBLIC_KEY: string = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Y5iQN3VNofXPtZXYZe9
@@ -31,7 +30,7 @@ export class Profile {
   public accountId?: string;
 
   constructor(
-    request: (method: string, url: string, data?: any) => Promise<any>
+    request: (method: string, url: string, data?: any) => Promise<any>,
   ) {
     this.request = request;
   }
@@ -61,13 +60,13 @@ export class Profile {
   async packages(
     packageState: number | string = "",
     showArchived: boolean = false,
-    tz: string = "UTC"
+    tz: string = "UTC",
   ): Promise<Package[]> {
     const packages: Package[] = [];
     const seenPageSignatures = new Set<string>();
     let totalCount: number | undefined;
 
-    for (let page = 1; page <= MAX_PACKAGE_PAGES; page++) {
+    for (let page = 1; ; page++) {
       const packagesResp = await this.request("post", API_URL_BUYER, {
         version: "1.0",
         method: "GetTrackInfoList",
@@ -84,7 +83,7 @@ export class Profile {
 
       if (packagesResp.Code !== 0) {
         throw new RequestError(
-          `Non-zero status code in response: ${packagesResp.Code}`
+          `Non-zero status code in response: ${packagesResp.Code}`,
         );
       }
 
@@ -95,7 +94,7 @@ export class Profile {
         rows.map((packageData: any) => [
           packageData.FTrackInfoId ?? null,
           packageData.FTrackNo,
-        ])
+        ]),
       );
       if (seenPageSignatures.has(pageSignature)) break;
       seenPageSignatures.add(pageSignature);
@@ -124,10 +123,17 @@ export class Profile {
         packages.push(new Package(packageData.FTrackNo, options));
       }
 
-      totalCount ??= packagesResp.pageInfo?.TotalCount || undefined;
+      const responseTotalCount = packagesResp.pageInfo?.TotalCount;
       if (
-        rows.length < PACKAGES_PER_PAGE &&
-        (totalCount === undefined || packages.length >= totalCount)
+        totalCount === undefined &&
+        typeof responseTotalCount === "number" &&
+        Number.isFinite(responseTotalCount)
+      ) {
+        totalCount = responseTotalCount;
+      }
+      if (
+        rows.length < PACKAGES_PER_PAGE ||
+        (totalCount !== undefined && packages.length >= totalCount)
       ) {
         break;
       }
@@ -137,7 +143,7 @@ export class Profile {
   }
 
   async summary(
-    showArchived: boolean = false
+    showArchived: boolean = false,
   ): Promise<Record<string, number>> {
     const summaryResp = await this.request("post", API_URL_BUYER, {
       version: "1.0",
@@ -271,7 +277,7 @@ export class Profile {
     }
     throw new InvalidTrackingNumberError(
       notFoundMessage ??
-        `Package not found by tracking number: ${trackingNumber}`
+        `Package not found by tracking number: ${trackingNumber}`,
     );
   }
 
@@ -306,7 +312,7 @@ export class Profile {
 
   async setFriendlyName(
     internalId: string,
-    friendlyName: string
+    friendlyName: string,
   ): Promise<void> {
     const remarkResp = await this.request("post", API_URL_BUYER, {
       version: "1.0",
@@ -323,12 +329,12 @@ export class Profile {
   async archivePackage(trackingNumber: string): Promise<void> {
     const packages = await this.packages();
     const packageToArchive = packages.find(
-      (p) => p.trackingNumber === trackingNumber
+      (p) => p.trackingNumber === trackingNumber,
     );
 
     if (!packageToArchive) {
       throw new InvalidTrackingNumberError(
-        `Package not found by tracking number: ${trackingNumber}`
+        `Package not found by tracking number: ${trackingNumber}`,
       );
     }
 
@@ -352,11 +358,11 @@ export class Profile {
   async deletePackage(trackingNumber: string): Promise<void> {
     const packages = await this.packages();
     const packageToDelete = packages.find(
-      (p) => p.trackingNumber === trackingNumber
+      (p) => p.trackingNumber === trackingNumber,
     );
     if (!packageToDelete) {
       throw new InvalidTrackingNumberError(
-        `Package not found by tracking number: ${trackingNumber}`
+        `Package not found by tracking number: ${trackingNumber}`,
       );
     }
 

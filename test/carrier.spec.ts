@@ -98,7 +98,7 @@ describe("carrier support", () => {
   it("finds packages beyond the first results page", async () => {
     const firstPage = {
       Code: 0,
-      pageInfo: { TotalCount: 1 },
+      pageInfo: { TotalCount: 41 },
       Json: Array.from({ length: 40 }, (_, index) => ({
         FTrackNo: `FIRST-PAGE-${index}`,
         FTrackInfoId: `first-page-${index}`,
@@ -117,6 +117,35 @@ describe("carrier support", () => {
     assert.equal(calls[1].data.param.Page, 2);
     assert.deepEqual(calls[2].data.param, {
       TrackInfoId: "page-2-id",
+      FirstCarrier: 100778,
+      SecondCarrier: 222,
+    });
+  });
+
+  it("finds packages after page 100", async () => {
+    const fullPages = Array.from({ length: 100 }, (_, pageIndex) => ({
+      Code: 0,
+      pageInfo: { TotalCount: 4001 },
+      Json: Array.from({ length: 40 }, (_, packageIndex) => ({
+        FTrackNo: `PAGE-${pageIndex + 1}-${packageIndex}`,
+        FTrackInfoId: `page-${pageIndex + 1}-${packageIndex}`,
+        FLastEvent: "",
+      })),
+    }));
+    const { profile, calls } = fakeProfile([
+      ...fullPages,
+      {
+        ...packageResponse("TRACK-ON-PAGE-101", "page-101-id", 1, 222),
+        pageInfo: { TotalCount: 4001 },
+      },
+      { Code: 0 },
+    ]);
+
+    await profile.setCarrierByTrackingNumber("TRACK-ON-PAGE-101", 100778);
+
+    assert.equal(calls[100].data.param.Page, 101);
+    assert.deepEqual(calls[101].data.param, {
+      TrackInfoId: "page-101-id",
       FirstCarrier: 100778,
       SecondCarrier: 222,
     });
